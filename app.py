@@ -1,4 +1,5 @@
 import streamlit as st
+import pandas as pd
 from optimizer import optimize_tasks
 
 st.set_page_config(page_title="Decision Autopilot")
@@ -19,7 +20,12 @@ for i in range(num_tasks):
     priority = st.slider(f"Priority {i+1}", 1, 10, 5, key=f"p{i}")
     energy = st.slider(f"Energy {i+1}", 1, 10, 5, key=f"e{i}")
     regret = st.slider(f"Regret {i+1}", 1, 10, 5, key=f"r{i}")
+mode = st.selectbox("Your Mode", ["Normal", "Low Energy", "High Focus"])
 
+if mode == "Low Energy":
+    w3 = w3 * 1.5
+elif mode == "High Focus":
+    w1 = w1 * 1.5
     tasks.append({
         "name": name if name else f"Task {i+1}",
         "time": time,
@@ -42,11 +48,24 @@ w3 = st.slider("Energy Penalty", 0.0, 2.0, 1.0)
 if st.button("🚀 Decide for me"):
 
     selected, rejected = optimize_tasks(tasks, available_time, energy_limit, w1, w2, w3)
+    df = pd.DataFrame(tasks)
+df["Score"] = [
+    w1*t["priority"] + w2*t["regret"] - w3*t["energy"]
+    for t in tasks
+]
+
+st.subheader("📊 Task Scores")
+st.bar_chart(df.set_index("name")["Score"])
 
     st.subheader("✅ Do This")
-    for t in selected:
-        st.write(f"👉 {t['name']}")
+   st.subheader("🧠 Why these decisions?")
 
-    st.subheader("❌ Skip This")
-    for t in rejected:
-        st.write(f"👉 {t['name']}")
+for t in selected:
+    st.write(
+        f"👉 **{t['name']}** chosen because: "
+        f"High Priority ({t['priority']}), "
+        f"High Regret ({t['regret']}), "
+        f"Manageable Energy ({t['energy']}) → Score: {t['score']}"
+    )
+    if st.button("❌ I skipped a task, recalculate"):
+    st.experimental_rerun()
