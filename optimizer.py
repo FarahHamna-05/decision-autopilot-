@@ -1,16 +1,15 @@
 from pulp import LpMaximize, LpProblem, LpVariable, lpSum
 
-def optimize_tasks(tasks, available_time, energy_limit, w1, w2, w3):
+def optimize_tasks(tasks, available_time, energy_limit):
 
-    model = LpProblem(name="decision-autopilot", sense=LpMaximize)
+    model = LpProblem(name="decision-agent", sense=LpMaximize)
 
+    # Decision variables
     x = [LpVariable(f"x_{i}", cat="Binary") for i in range(len(tasks))]
 
-    # Objective
+    # Objective function
     model += lpSum(
-        (w1 * tasks[i]["priority"] +
-         w2 * tasks[i]["regret"] -
-         w3 * tasks[i]["energy"]) * x[i]
+        (tasks[i]["priority"] + tasks[i]["regret"] - tasks[i]["energy"]) * x[i]
         for i in range(len(tasks))
     )
 
@@ -18,22 +17,20 @@ def optimize_tasks(tasks, available_time, energy_limit, w1, w2, w3):
     model += lpSum(tasks[i]["time"] * x[i] for i in range(len(tasks))) <= available_time
     model += lpSum(tasks[i]["energy"] * x[i] for i in range(len(tasks))) <= energy_limit
 
+    # Solve
     model.solve()
 
     selected, rejected = [], []
 
     for i in range(len(tasks)):
+        score = tasks[i]["priority"] + tasks[i]["regret"] - tasks[i]["energy"]
 
-        score = (w1 * tasks[i]["priority"] +
-                 w2 * tasks[i]["regret"] -
-                 w3 * tasks[i]["energy"])
-
-        task_data = tasks[i].copy()
-        task_data["score"] = round(score, 2)
+        task = tasks[i].copy()
+        task["score"] = round(score, 2)
 
         if x[i].value() == 1:
-            selected.append(task_data)
+            selected.append(task)
         else:
-            rejected.append(task_data)
+            rejected.append(task)
 
     return selected, rejected
