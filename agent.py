@@ -2,9 +2,10 @@ import streamlit as st
 from openai import OpenAI
 import json
 
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-
 def generate_tasks(user_input):
+
+    # Initialize client INSIDE function (important)
+    client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
     prompt = f"""
     Convert the following situation into structured tasks.
@@ -31,9 +32,14 @@ def generate_tasks(user_input):
 
         content = response.choices[0].message.content
 
-        tasks = json.loads(content)
+        try:
+            tasks = json.loads(content)
+        except:
+            st.error("Invalid response from AI. Try again.")
+            return []
+
         return tasks
 
     except Exception as e:
-        print("Agent Error:", e)
+        st.error(f"Agent Error: {e}")
         return []
